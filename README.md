@@ -45,9 +45,9 @@ python -m pytest -v
 ```
 
 ## Заметка по API
-Пути actions/usage-эндпоинтов заданы под текущий Remnawave (2.x) в
-`remnawave/client.py`. Статистика трафика берётся из
-`GET /api/bandwidth-stats/user/{uuid}?start=&end=`. Если панель отвечает 404 на
-действие или показывает «📊 Детализация недоступна», сверь путь со swagger
-`{REMNAWAVE_URL}/api/docs` и поправь в клиенте (в старых версиях усреднённый путь
-был `/api/users/stats/usage/{uuid}/range`).
+Рассчитано на Remnawave **2.7.x**. Статистика трафика берётся из bandwidth-stats:
+основной запрос — `GET /api/bandwidth-stats/users/{uuid}?start=&end=&topNodesLimit=10`,
+при ответе 404 клиент автоматически пробует запасной
+`GET /api/bandwidth-stats/user/{uuid}?start=&end=`. Все пути собраны в
+`remnawave/client.py`. Если действие отвечает 404 — сверь путь со swagger
+`{REMNAWAVE_URL}/api/docs`.

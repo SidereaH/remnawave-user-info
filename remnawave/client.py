@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 class RemnawaveError(Exception):
     """Понятная для пользователя ошибка обращения к панели."""
 
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+
 
 class RemnawaveClient:
     def __init__(
@@ -44,7 +48,10 @@ class RemnawaveClient:
                 "Remnawave %s %s -> %s: %s",
                 method, path, e.response.status_code, e.response.text[:300],
             )
-            raise RemnawaveError(f"Панель ответила {e.response.status_code}") from e
+            raise RemnawaveError(
+                f"Панель ответила {e.response.status_code}",
+                status=e.response.status_code,
+            ) from e
         except httpx.HTTPError as e:
             logger.warning("Remnawave %s %s failed: %s", method, path, e)
             raise RemnawaveError("Нет связи с панелью") from e
@@ -138,13 +145,26 @@ class RemnawaveClient:
     async def get_usage_by_range(
         self, uuid: str, start: datetime, end: datetime
     ) -> Any:
-        # Remnawave 2.x: потребление пользователя за период.
-        # Если панель отвечает 404 — сверь путь со swagger {URL}/api/docs
-        # (в старых версиях был /api/users/stats/usage/{uuid}/range).
+        """Потребление трафика пользователя за период [start, end].
+
+        Remnawave 2.7.x отдаёт это через bandwidth-stats. Путь между релизами
+        отличается: основной — `/api/bandwidth-stats/users/{uuid}` (мн.ч., с
+        разбивкой по узлам), запасной — `/api/bandwidth-stats/user/{uuid}`
+        (ед.ч., usage-by-range). Пробуем основной, при 404 — запасной.
+        """
         params = {
             "start": start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
             "end": end.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         }
-        return await self._request(
-            "GET", f"/api/bandwidth-stats/user/{uuid}", params=params
-        )
+        try:
+            return await self._request(
+                "GET",
+                f"/api/bandwidth-stats/users/{uuid}",
+                params={**params, "topNodesLimit": 10},
+            )
+        except RemnawaveError as e:
+            if e.status != 404:
+                raise
+            return await self._request(
+                "GET", f"/api/bandwidth-stats/user/{uuid}", params=params
+            )

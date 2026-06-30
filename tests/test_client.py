@@ -15,7 +15,7 @@ def _client(handler):
     )
 
 
-async def test_get_usage_by_range_path_and_params():
+async def test_get_usage_by_range_primary_plural_path_and_params():
     from datetime import datetime, timezone
 
     captured = {}
@@ -24,16 +24,52 @@ async def test_get_usage_by_range_path_and_params():
         captured["path"] = req.url.path
         captured["start"] = req.url.params.get("start")
         captured["end"] = req.url.params.get("end")
+        captured["topNodesLimit"] = req.url.params.get("topNodesLimit")
         return httpx.Response(200, json={"response": [{"nodeName": "A", "total": 10}]})
 
     c = _client(handler)
     start = datetime(2026, 6, 1, tzinfo=timezone.utc)
     end = datetime(2026, 6, 8, tzinfo=timezone.utc)
     data = await c.get_usage_by_range("u1", start, end)
-    assert captured["path"] == "/api/bandwidth-stats/user/u1"
+    assert captured["path"] == "/api/bandwidth-stats/users/u1"  # plural primary
     assert captured["start"] == "2026-06-01T00:00:00.000Z"
     assert captured["end"] == "2026-06-08T00:00:00.000Z"
+    assert captured["topNodesLimit"] == "10"
     assert data == [{"nodeName": "A", "total": 10}]
+    await c.aclose()
+
+
+async def test_get_usage_by_range_falls_back_to_singular_on_404():
+    from datetime import datetime, timezone
+
+    seen = []
+
+    def handler(req):
+        seen.append(req.url.path)
+        if req.url.path == "/api/bandwidth-stats/users/u1":
+            return httpx.Response(404, json={"message": "not found"})
+        return httpx.Response(200, json={"response": {"totalBytes": 99}})
+
+    c = _client(handler)
+    start = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    end = datetime(2026, 6, 8, tzinfo=timezone.utc)
+    data = await c.get_usage_by_range("u1", start, end)
+    assert seen == ["/api/bandwidth-stats/users/u1", "/api/bandwidth-stats/user/u1"]
+    assert data == {"totalBytes": 99}
+    await c.aclose()
+
+
+async def test_get_usage_by_range_reraises_non_404():
+    from datetime import datetime, timezone
+
+    def handler(req):
+        return httpx.Response(500, json={"message": "boom"})
+
+    c = _client(handler)
+    start = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    end = datetime(2026, 6, 8, tzinfo=timezone.utc)
+    with pytest.raises(RemnawaveError):
+        await c.get_usage_by_range("u1", start, end)
     await c.aclose()
 
 
