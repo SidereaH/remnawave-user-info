@@ -135,6 +135,16 @@ class RemnawaveClient:
         users = self._as_users(await self._request("PATCH", "/api/users", json=body))
         return users[0] if users else await self.get_user(uuid)
 
-    async def get_usage(self, uuid: str) -> Any:
-        # NOTE: Verify path against swagger on live deployment.
-        return await self._request("GET", f"/api/users/stats/usage/{uuid}")
+    async def get_usage_by_range(
+        self, uuid: str, start: datetime, end: datetime
+    ) -> Any:
+        # Remnawave 2.x: потребление пользователя за период.
+        # Если панель отвечает 404 — сверь путь со swagger {URL}/api/docs
+        # (в старых версиях был /api/users/stats/usage/{uuid}/range).
+        params = {
+            "start": start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "end": end.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+        }
+        return await self._request(
+            "GET", f"/api/bandwidth-stats/user/{uuid}", params=params
+        )

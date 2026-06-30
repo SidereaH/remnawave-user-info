@@ -38,6 +38,16 @@ def test_render_card_escapes_html():
     assert "&lt;b&gt;" in txt
 
 
+def test_render_card_european_date_format():
+    # 2026-12-31 00:00 UTC -> ДД.ММ.ГГ ЧЧ:ММ
+    txt = render_card(_user())
+    assert "31.12.26 00:00" in txt
+
+
+def test_render_card_unlimited_expiry():
+    assert "Истекает: ∞" in render_card(_user(expire_at=None))
+
+
 # ---------------------------------------------------------------------------
 # render_usage shapes
 # ---------------------------------------------------------------------------
@@ -63,6 +73,21 @@ def test_render_usage_dict_with_nodes_key():
     assert "Трафик по узлам" in txt
     assert "Node X" in txt
     assert "1.00 MB" in txt
+
+
+def test_render_usage_with_period_label_and_total():
+    """Период-режим: заголовок с периодом и строка 'Итого' с суммой по строкам."""
+    data = [{"nodeName": "A", "total": 1024}, {"nodeName": "B", "total": 1024}]
+    txt = render_usage(data, period_label="неделю")
+    assert "Потребление за неделю" in txt
+    assert "Итого: 2.00 KB" in txt
+
+
+def test_render_usage_flat_total_dict():
+    """Плоский ответ с одним числом суммируется в 'Итого'."""
+    txt = render_usage({"totalBytes": 1024 ** 2}, period_label="30 дней")
+    assert "Потребление за 30 дней" in txt
+    assert "Итого: 1.00 MB" in txt
 
 
 def test_render_usage_unknown_shape_returns_fallback():

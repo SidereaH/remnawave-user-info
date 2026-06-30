@@ -141,7 +141,7 @@ async def test_show_card_succeeds_normally():
 async def test_on_custom_date_missing_uuid_sends_expired_message():
     """When FSM data has no uuid, on_custom_date sends the expiry warning."""
     state = FakeState(data={})  # no "uuid" key
-    message = FakeAnswerMessage(text="2027-01-01")
+    message = FakeAnswerMessage(text="01.01.27")
     client = FakeClient()
 
     await on_custom_date(message, state, client)
@@ -155,7 +155,7 @@ async def test_on_custom_date_missing_uuid_sends_expired_message():
 async def test_on_custom_date_missing_uuid_does_not_call_update_expire():
     """When FSM data has no uuid, update_expire must NOT be called."""
     state = FakeState(data={})
-    message = FakeAnswerMessage(text="2027-01-01")
+    message = FakeAnswerMessage(text="01.01.27")
     client = FakeClient()
 
     await on_custom_date(message, state, client)
@@ -167,7 +167,7 @@ async def test_on_custom_date_missing_uuid_does_not_call_update_expire():
 async def test_on_custom_date_with_uuid_calls_update_expire():
     """Sanity: when uuid is present, update_expire IS called."""
     state = FakeState(data={"uuid": "real-uuid"})
-    message = FakeAnswerMessage(text="2027-01-01")
+    message = FakeAnswerMessage(text="01.01.27")
     client = FakeClient()
 
     await on_custom_date(message, state, client)

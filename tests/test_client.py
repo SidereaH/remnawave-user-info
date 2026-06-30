@@ -15,6 +15,28 @@ def _client(handler):
     )
 
 
+async def test_get_usage_by_range_path_and_params():
+    from datetime import datetime, timezone
+
+    captured = {}
+
+    def handler(req):
+        captured["path"] = req.url.path
+        captured["start"] = req.url.params.get("start")
+        captured["end"] = req.url.params.get("end")
+        return httpx.Response(200, json={"response": [{"nodeName": "A", "total": 10}]})
+
+    c = _client(handler)
+    start = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    end = datetime(2026, 6, 8, tzinfo=timezone.utc)
+    data = await c.get_usage_by_range("u1", start, end)
+    assert captured["path"] == "/api/bandwidth-stats/user/u1"
+    assert captured["start"] == "2026-06-01T00:00:00.000Z"
+    assert captured["end"] == "2026-06-08T00:00:00.000Z"
+    assert data == [{"nodeName": "A", "total": 10}]
+    await c.aclose()
+
+
 async def test_get_by_telegram_id_unwraps_array():
     def handler(req):
         assert req.url.path == "/api/users/by-telegram-id/555"

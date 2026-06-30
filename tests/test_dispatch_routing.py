@@ -143,7 +143,7 @@ async def test_date_input_in_waiting_state_routes_to_custom_date() -> None:
         date=datetime.now(timezone.utc),
         chat=tg_chat,
         from_user=tg_user,
-        text="2027-01-01",
+        text="01.01.27",
     )
     update = Update(update_id=1, message=msg)
 

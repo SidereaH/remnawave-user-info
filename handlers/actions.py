@@ -12,10 +12,12 @@ from formatting import render_card, render_usage
 from keyboards import (
     ConfirmCB,
     ExtendCB,
+    UsageCB,
     UserCB,
     card_keyboard,
     confirm_keyboard,
     extend_keyboard,
+    usage_period_keyboard,
 )
 from remnawave.client import RemnawaveClient, RemnawaveError
 from states import ExtendStates
@@ -23,10 +25,18 @@ from states import ExtendStates
 logger = logging.getLogger(__name__)
 router = Router(name="actions")
 
+_PERIOD_LABELS = {"7": "неделю", "30": "30 дней", "60": "60 дней"}
+
 
 def parse_date(text: str) -> datetime:
-    dt = datetime.strptime(text.strip(), "%Y-%m-%d")
-    return dt.replace(tzinfo=timezone.utc)
+    """Принимает ДД.ММ.ГГ и ДД.ММ.ГГГГ, возвращает дату в UTC."""
+    t = text.strip()
+    for fmt in ("%d.%m.%y", "%d.%m.%Y"):
+        try:
+            return datetime.strptime(t, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    raise ValueError(f"unrecognized date: {text!r}")
 
 
 async def _show_card(cq: CallbackQuery, client: RemnawaveClient, uuid: str) -> None:
@@ -70,13 +80,25 @@ async def _do_simple(cq, client, uuid, method, ok_text):
 
 
 @router.callback_query(UserCB.filter(F.action == "usage"))
-async def cb_usage(cq: CallbackQuery, callback_data: UserCB, client: RemnawaveClient):
+async def cb_usage(cq: CallbackQuery, callback_data: UserCB):
+    await cq.message.edit_reply_markup(
+        reply_markup=usage_period_keyboard(callback_data.uuid)
+    )
+    await cq.answer("Выбери период")
+
+
+@router.callback_query(UsageCB.filter())
+async def cb_usage_period(cq: CallbackQuery, callback_data: UsageCB, client: RemnawaveClient):
+    days = int(callback_data.period)
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=days)
     try:
-        data = await client.get_usage(callback_data.uuid)
+        data = await client.get_usage_by_range(callback_data.uuid, start, end)
     except RemnawaveError as e:
         await cq.answer(str(e), show_alert=True)
         return
-    await cq.message.answer(render_usage(data))
+    label = _PERIOD_LABELS.get(callback_data.period, f"{days} дней")
+    await cq.message.answer(render_usage(data, label))
     await cq.answer()
 
 
@@ -105,7 +127,7 @@ async def cb_extend_preset(cq: CallbackQuery, callback_data: ExtendCB, client: R
 async def cb_extend_custom(cq: CallbackQuery, callback_data: ExtendCB, state: FSMContext):
     await state.update_data(uuid=callback_data.uuid)
     await state.set_state(ExtendStates.waiting_for_date)
-    await cq.message.answer("📅 Пришли дату окончания в формате <b>YYYY-MM-DD</b>:")
+    await cq.message.answer("📅 Пришли дату окончания в формате <b>ДД.ММ.ГГ</b> (например 31.12.26):")
     await cq.answer()
 
 
@@ -114,7 +136,7 @@ async def on_custom_date(message: Message, state: FSMContext, client: RemnawaveC
     try:
         new_expire = parse_date(message.text or "")
     except ValueError:
-        await message.answer("❌ Неверный формат. Нужно <b>YYYY-MM-DD</b>, например 2026-12-31.")
+        await message.answer("❌ Неверный формат. Нужно <b>ДД.ММ.ГГ</b>, например 31.12.26.")
         return
     data = await state.get_data()
     uuid = data.get("uuid")

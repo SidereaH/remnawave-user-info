@@ -33,7 +33,8 @@ def _fmt_traffic(used: int, limit: int) -> str:
 
 
 def _fmt_expire(dt: datetime | None) -> str:
-    return dt.strftime("%Y-%m-%d %H:%M") if dt else "∞"
+    # Европейский формат: ДД.ММ.ГГ ЧЧ:ММ.
+    return dt.strftime("%d.%m.%y %H:%M") if dt else "∞"
 
 
 def render_card(u: RemnaUser) -> str:
@@ -52,28 +53,64 @@ def render_card(u: RemnaUser) -> str:
     return "\n".join(lines)
 
 
-def render_usage(data: Any) -> str:
-    """Детализация трафика по узлам. Формат ответа панели может отличаться —
-    рендерим устойчиво к структуре."""
+_BYTES_KEYS = (
+    "total", "totalBytes", "bytes", "usedBytes", "used",
+    "totalUsedBytes", "value",
+)
+
+
+def _row_bytes(r: dict) -> int:
+    for key in _BYTES_KEYS:
+        if key in r and r[key] is not None:
+            try:
+                return int(r[key])
+            except (TypeError, ValueError):
+                return 0
+    return 0
+
+
+def _row_name(r: dict) -> str:
+    return str(
+        r.get("nodeName") or r.get("name") or r.get("node")
+        or r.get("date") or r.get("day") or "?"
+    )
+
+
+def _extract_rows(data: Any) -> list[dict]:
+    if isinstance(data, list):
+        return [r for r in data if isinstance(r, dict)]
+    if isinstance(data, dict):
+        for key in ("nodes", "usages", "usage", "stats"):
+            if isinstance(data.get(key), list):
+                return [r for r in data[key] if isinstance(r, dict)]
+    return []
+
+
+def render_usage(data: Any, period_label: str | None = None) -> str:
+    """Потребление трафика за период / по узлам. Формат ответа панели может
+    отличаться между версиями — рендерим устойчиво к структуре."""
     if not data:
         return "Нет данных по трафику."
-    rows: list[dict] = []
-    if isinstance(data, list):
-        rows = [r for r in data if isinstance(r, dict)]
-    elif isinstance(data, dict):
-        for key in ("nodes", "usage", "stats"):
-            if isinstance(data.get(key), list):
-                rows = [r for r in data[key] if isinstance(r, dict)]
-                break
+
+    header = (
+        f"📊 <b>Потребление за {escape(period_label)}:</b>"
+        if period_label
+        else "📊 <b>Трафик по узлам:</b>"
+    )
+    rows = _extract_rows(data)
+
     if not rows:
+        # Плоский ответ с одним суммарным числом.
+        if isinstance(data, dict):
+            flat = _row_bytes(data)
+            if flat:
+                return f"{header}\nИтого: {human_bytes(flat)}"
         return "📊 Детализация недоступна (проверь формат usage-эндпоинта)."
-    lines = ["📊 <b>Трафик по узлам:</b>"]
+
+    detail: list[str] = []
+    total = 0
     for r in rows:
-        name = escape(str(r.get("nodeName") or r.get("name") or r.get("node") or "?"))
-        total = r.get("total") or r.get("totalBytes") or r.get("bytes") or 0
-        try:
-            total = int(total)
-        except (TypeError, ValueError):
-            total = 0
-        lines.append(f"• {name}: {human_bytes(total)}")
-    return "\n".join(lines)
+        b = _row_bytes(r)
+        total += b
+        detail.append(f"• {escape(_row_name(r))}: {human_bytes(b)}")
+    return "\n".join([header, f"Итого: {human_bytes(total)}", *detail])

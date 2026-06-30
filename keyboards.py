@@ -23,6 +23,11 @@ class ConfirmCB(CallbackData, prefix="cf"):
     yes: int
 
 
+class UsageCB(CallbackData, prefix="usg"):
+    period: str  # "7" | "30" | "60" (дней)
+    uuid: str
+
+
 def card_keyboard(u: RemnaUser) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     if u.status == "DISABLED":
@@ -32,7 +37,7 @@ def card_keyboard(u: RemnaUser) -> InlineKeyboardMarkup:
     b.button(text="➕ Продлить", callback_data=UserCB(action="extend_menu", uuid=u.uuid))
     b.button(text="🧹 Сброс трафика", callback_data=UserCB(action="reset_ask", uuid=u.uuid))
     b.button(text="🔁 Ревок подписки", callback_data=UserCB(action="revoke_ask", uuid=u.uuid))
-    b.button(text="📊 Трафик по узлам", callback_data=UserCB(action="usage", uuid=u.uuid))
+    b.button(text="📊 Статистика трафика", callback_data=UserCB(action="usage", uuid=u.uuid))
     b.button(text="🔄 Обновить", callback_data=UserCB(action="refresh", uuid=u.uuid))
     b.adjust(1, 1, 2, 1, 1)
     return b.as_markup()
@@ -46,6 +51,16 @@ def extend_keyboard(uuid: str) -> InlineKeyboardMarkup:
     b.button(text="📅 Ввести дату", callback_data=ExtendCB(days="custom", uuid=uuid))
     b.button(text="⬅️ Назад", callback_data=UserCB(action="refresh", uuid=uuid))
     b.adjust(1, 3, 1, 1)
+    return b.as_markup()
+
+
+def usage_period_keyboard(uuid: str) -> InlineKeyboardMarkup:
+    b = InlineKeyboardBuilder()
+    b.button(text="Неделя", callback_data=UsageCB(period="7", uuid=uuid))
+    b.button(text="30 дней", callback_data=UsageCB(period="30", uuid=uuid))
+    b.button(text="60 дней", callback_data=UsageCB(period="60", uuid=uuid))
+    b.button(text="⬅️ Назад", callback_data=UserCB(action="refresh", uuid=uuid))
+    b.adjust(3, 1)
     return b.as_markup()
 
 
