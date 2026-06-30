@@ -46,9 +46,14 @@ python -m pytest -v
 ```
 
 ## Заметка по API
-Рассчитано на Remnawave **2.7.x**. Статистика трафика берётся из bandwidth-stats:
-основной запрос — `GET /api/bandwidth-stats/users/{uuid}?start=&end=&topNodesLimit=10`,
-при ответе 404 клиент автоматически пробует запасной
-`GET /api/bandwidth-stats/user/{uuid}?start=&end=`. Все пути собраны в
-`remnawave/client.py`. Если действие отвечает 404 — сверь путь со swagger
+Рассчитано на Remnawave **2.8.0** (сверено с официальной OpenAPI-спекой).
+Учтённые отличия 2.8.0 от 2.7.x:
+- использованный трафик переехал в `userTraffic.usedTrafficBytes`
+  (клиент поддерживает и старый верхнеуровневый вариант);
+- `POST /api/users/{uuid}/actions/revoke` теперь требует тело
+  (`{"revokeOnlyPasswords": false}`);
+- статистика: основной `GET /api/bandwidth-stats/users/{uuid}?start=&end=&topNodesLimit=10`,
+  запасной при 404 — `GET /api/bandwidth-stats/users/{uuid}/legacy`.
+
+Все пути собраны в `remnawave/client.py`. При расхождениях сверяйся со swagger
 `{REMNAWAVE_URL}/api/docs`.

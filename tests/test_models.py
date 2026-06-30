@@ -3,6 +3,25 @@ from datetime import datetime
 from remnawave.models import RemnaUser
 
 
+def test_from_dict_used_traffic_from_user_traffic_2_8():
+    """Remnawave 2.8.0 nests used traffic under userTraffic."""
+    u = RemnaUser.from_dict(
+        {
+            "uuid": "abc",
+            "trafficLimitBytes": 1024 ** 3,
+            "userTraffic": {"usedTrafficBytes": 2048, "lifetimeUsedTrafficBytes": 4096},
+        }
+    )
+    assert u.used_traffic_bytes == 2048
+    assert u.traffic_limit_bytes == 1024 ** 3
+
+
+def test_from_dict_used_traffic_legacy_top_level():
+    """Pre-2.8 panels keep usedTrafficBytes at the top level — still supported."""
+    u = RemnaUser.from_dict({"uuid": "abc", "usedTrafficBytes": "777"})
+    assert u.used_traffic_bytes == 777
+
+
 def test_from_dict_maps_camelcase_fields():
     u = RemnaUser.from_dict(
         {

@@ -38,11 +38,17 @@ class RemnaUser:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "RemnaUser":
+        # Remnawave 2.8.0 вложил использованный трафик в userTraffic;
+        # до 2.8 он лежал на верхнем уровне — поддерживаем оба варианта.
+        traffic = d.get("userTraffic") or {}
+        used = traffic.get("usedTrafficBytes")
+        if used is None:
+            used = d.get("usedTrafficBytes")
         return cls(
             uuid=d.get("uuid", ""),
             username=d.get("username", ""),
             status=d.get("status", ""),
-            used_traffic_bytes=_to_int(d.get("usedTrafficBytes")),
+            used_traffic_bytes=_to_int(used),
             traffic_limit_bytes=_to_int(d.get("trafficLimitBytes")),
             expire_at=_parse_dt(d.get("expireAt")),
             telegram_id=d.get("telegramId"),

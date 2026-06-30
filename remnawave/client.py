@@ -135,8 +135,14 @@ class RemnawaveClient:
         )
 
     async def revoke_subscription(self, uuid: str) -> RemnaUser:
+        # Remnawave 2.8.0: revoke требует тело. revokeOnlyPasswords=false —
+        # полный перевыпуск подписки (новый shortUuid/subscriptionUrl).
         users = self._as_users(
-            await self._request("POST", f"/api/users/{uuid}/actions/revoke")
+            await self._request(
+                "POST",
+                f"/api/users/{uuid}/actions/revoke",
+                json={"revokeOnlyPasswords": False},
+            )
         )
         return users[0] if users else await self.get_user(uuid)
 
@@ -153,10 +159,9 @@ class RemnawaveClient:
     ) -> Any:
         """Потребление трафика пользователя за период [start, end].
 
-        Remnawave 2.7.x отдаёт это через bandwidth-stats. Путь между релизами
-        отличается: основной — `/api/bandwidth-stats/users/{uuid}` (мн.ч., с
-        разбивкой по узлам), запасной — `/api/bandwidth-stats/user/{uuid}`
-        (ед.ч., usage-by-range). Пробуем основной, при 404 — запасной.
+        Remnawave 2.8.0: основной — `/api/bandwidth-stats/users/{uuid}`
+        (обязательны start, end, topNodesLimit), запасной (если 404) —
+        `/api/bandwidth-stats/users/{uuid}/legacy` (только start, end).
         """
         params = {
             "start": start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
@@ -172,5 +177,5 @@ class RemnawaveClient:
             if e.status != 404:
                 raise
             return await self._request(
-                "GET", f"/api/bandwidth-stats/user/{uuid}", params=params
+                "GET", f"/api/bandwidth-stats/users/{uuid}/legacy", params=params
             )

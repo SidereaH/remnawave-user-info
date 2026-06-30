@@ -54,8 +54,29 @@ async def test_get_usage_by_range_falls_back_to_singular_on_404():
     start = datetime(2026, 6, 1, tzinfo=timezone.utc)
     end = datetime(2026, 6, 8, tzinfo=timezone.utc)
     data = await c.get_usage_by_range("u1", start, end)
-    assert seen == ["/api/bandwidth-stats/users/u1", "/api/bandwidth-stats/user/u1"]
+    assert seen == [
+        "/api/bandwidth-stats/users/u1",
+        "/api/bandwidth-stats/users/u1/legacy",
+    ]
     assert data == {"totalBytes": 99}
+    await c.aclose()
+
+
+async def test_revoke_subscription_sends_body():
+    captured = {}
+
+    def handler(req):
+        captured["method"] = req.method
+        captured["path"] = req.url.path
+        captured["body"] = json.loads(req.content)
+        return httpx.Response(200, json={"response": {"uuid": "u1", "username": "x"}})
+
+    c = _client(handler)
+    user = await c.revoke_subscription("u1")
+    assert captured["method"] == "POST"
+    assert captured["path"] == "/api/users/u1/actions/revoke"
+    assert captured["body"] == {"revokeOnlyPasswords": False}
+    assert user.uuid == "u1"
     await c.aclose()
 
 
