@@ -1,0 +1,13 @@
+services:
+  bot:
+    build: .
+    image: remnawave-tg-bot
+    container_name: remnawave-tg-bot
+    restart: unless-stopped
+    env_file: .env
+    # Polling-only bot: no inbound ports needed.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

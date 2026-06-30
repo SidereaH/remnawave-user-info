@@ -28,6 +28,16 @@ python bot.py
 | `REQUEST_TIMEOUT` | таймаут запросов к API, сек (по умолч. 20) |
 | `LOG_LEVEL` | уровень логов (по умолч. INFO) |
 
+## Запуск в Docker
+```bash
+cp .env.example .env   # заполнить значения
+docker compose up -d   # собрать образ и запустить в фоне
+docker compose logs -f # смотреть логи
+docker compose down    # остановить
+```
+Бот работает на long polling — входящие порты не нужны. Переменные читаются из
+`.env` через `env_file`. Логи ограничены ротацией (3 файла по 10 МБ).
+
 ## Тесты
 ```bash
 python -m pytest -v
