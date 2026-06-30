@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -30,7 +31,11 @@ def parse_date(text: str) -> datetime:
 
 async def _show_card(cq: CallbackQuery, client: RemnawaveClient, uuid: str) -> None:
     user = await client.get_user(uuid)
-    await cq.message.edit_text(render_card(user), reply_markup=card_keyboard(user))
+    try:
+        await cq.message.edit_text(render_card(user), reply_markup=card_keyboard(user))
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            raise
 
 
 @router.callback_query(UserCB.filter(F.action == "open"))
@@ -114,6 +119,9 @@ async def on_custom_date(message: Message, state: FSMContext, client: RemnawaveC
     data = await state.get_data()
     uuid = data.get("uuid")
     await state.clear()
+    if not uuid:
+        await message.answer("⚠️ Сессия истекла, начните продление заново.")
+        return
     try:
         user = await client.update_expire(uuid, new_expire)
     except RemnawaveError as e:
