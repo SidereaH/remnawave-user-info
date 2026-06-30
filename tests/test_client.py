@@ -77,6 +77,18 @@ async def test_update_expire_sends_patch_with_uuid():
     await c.aclose()
 
 
+async def test_network_error_raises_remnawave_error():
+    """_request must wrap httpx.ConnectError as RemnawaveError (no-connection branch)."""
+
+    def handler(req):
+        raise httpx.ConnectError("boom")
+
+    c = _client(handler)
+    with pytest.raises(RemnawaveError, match="Нет связи с панелью"):
+        await c.get_user("any-uuid")
+    await c.aclose()
+
+
 async def test_update_expire_normalizes_non_utc_to_utc():
     captured = {}
 

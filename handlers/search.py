@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, StateFilter
 from aiogram.types import Message
 
 from detect import detect_query
@@ -38,7 +38,7 @@ async def on_start(message: Message) -> None:
     await message.answer(_HELP)
 
 
-@router.message(F.text)
+@router.message(StateFilter(None), F.text)
 async def on_search(message: Message, client: RemnawaveClient) -> None:
     text = (message.text or "").strip()
     if not text:
@@ -57,7 +57,9 @@ async def on_search(message: Message, client: RemnawaveClient) -> None:
         u = users[0]
         await message.answer(render_card(u), reply_markup=card_keyboard(u))
         return
-    await message.answer(
-        f"Найдено {len(users)}. Выбери:",
-        reply_markup=choice_keyboard(users[:20]),
-    )
+    shown = users[:20]
+    if len(users) > len(shown):
+        header = f"Найдено {len(users)}, показаны первые {len(shown)}:"
+    else:
+        header = f"Найдено {len(users)}. Выбери:"
+    await message.answer(header, reply_markup=choice_keyboard(shown))

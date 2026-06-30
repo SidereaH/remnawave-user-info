@@ -156,9 +156,12 @@ async def cb_confirm(cq: CallbackQuery, callback_data: ConfirmCB, client: Remnaw
         if callback_data.action == "reset":
             await client.reset_traffic(callback_data.uuid)
             done = "Трафик сброшен"
-        else:
+        elif callback_data.action == "revoke":
             await client.revoke_subscription(callback_data.uuid)
             done = "Подписка перевыпущена"
+        else:
+            await cq.answer("Неизвестное действие", show_alert=True)
+            return
         await _show_card(cq, client, callback_data.uuid)
     except RemnawaveError as e:
         await cq.answer(str(e), show_alert=True)

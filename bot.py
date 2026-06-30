@@ -38,8 +38,8 @@ async def main() -> None:
     dp.message.middleware(access)
     dp.callback_query.middleware(access)
 
-    dp.include_router(search.router)
     dp.include_router(actions.router)
+    dp.include_router(search.router)
 
     logging.getLogger(__name__).info(
         "Бот запущен. Админов: %d", len(settings.admin_ids)
