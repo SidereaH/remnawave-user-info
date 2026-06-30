@@ -75,3 +75,19 @@ async def test_update_expire_sends_patch_with_uuid():
     assert "expireAt" in captured["body"]
     assert u.uuid == "u1"
     await c.aclose()
+
+
+async def test_update_expire_normalizes_non_utc_to_utc():
+    captured = {}
+
+    def handler(req):
+        import json as _json
+        captured["body"] = _json.loads(req.content)
+        return httpx.Response(200, json={"response": {"uuid": "u1", "username": "x"}})
+
+    from datetime import datetime, timezone, timedelta
+
+    c = _client(handler)
+    await c.update_expire("u1", datetime(2026, 12, 31, 12, 0, 0, tzinfo=timezone(timedelta(hours=3))))
+    assert captured["body"]["expireAt"] == "2026-12-31T09:00:00.000Z"
+    await c.aclose()

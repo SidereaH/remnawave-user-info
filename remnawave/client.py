@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -57,7 +57,7 @@ class RemnawaveClient:
         if response is None:
             return []
         if isinstance(response, dict) and "users" in response:
-            response = response["users"]
+            response = response["users"] or []
         if isinstance(response, dict):
             response = [response]
         return [RemnaUser.from_dict(u) for u in response]
@@ -102,7 +102,7 @@ class RemnawaveClient:
                 u for u in page if needle_l in (u.description or "").lower()
             )
             start += len(page)
-            if total and start >= total:
+            if total == 0 or start >= total:
                 break
         return found
 
@@ -130,7 +130,7 @@ class RemnawaveClient:
     async def update_expire(self, uuid: str, expire_at: datetime) -> RemnaUser:
         body = {
             "uuid": uuid,
-            "expireAt": expire_at.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+            "expireAt": expire_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         }
         users = self._as_users(await self._request("PATCH", "/api/users", json=body))
         return users[0] if users else await self.get_user(uuid)
