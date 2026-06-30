@@ -200,3 +200,73 @@ async def test_cb_confirm_devices_calls_reset_devices():
     client = DevClient()
     await cb_confirm(cq, ConfirmCB(action="devices", uuid="u-7", yes=1), client)
     assert client.reset_devices_called_with == "u-7"
+
+
+# ---------------------------------------------------------------------------
+# _extend_base: expired -> from now; active -> add to current expiry
+# ---------------------------------------------------------------------------
+
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+from handlers.actions import _extend_base  # noqa: E402
+
+
+def test_extend_base_expired_uses_now():
+    now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+    past = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    assert _extend_base(past, now) == now
+
+
+def test_extend_base_active_uses_expiry():
+    now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+    future = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    assert _extend_base(future, now) == future
+
+
+def test_extend_base_none_uses_now():
+    now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+    assert _extend_base(None, now) == now
+
+
+def test_extend_base_naive_future_treated_as_utc():
+    now = datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc)
+    naive_future = datetime(2026, 9, 1)  # no tzinfo
+    result = _extend_base(naive_future, now)
+    assert result == naive_future.replace(tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+async def test_cb_extend_preset_adds_to_active_expiry():
+    """Active subscription: +days is added to the existing expireAt."""
+    from handlers.actions import cb_extend_preset
+    from keyboards import ExtendCB
+    from remnawave.models import RemnaUser
+
+    future = datetime(2030, 1, 1, tzinfo=timezone.utc)
+    user = RemnaUser(
+        uuid="u-1", username="j", status="ACTIVE", used_traffic_bytes=0,
+        traffic_limit_bytes=0, expire_at=future, telegram_id=None, email=None,
+        description="", subscription_url=None, short_uuid=None, raw={},
+    )
+    client = FakeClient(user=user)
+    await cb_extend_preset(FakeCQ(), ExtendCB(days="30", uuid="u-1"), client)
+    assert client.update_expire_args[1] == future + timedelta(days=30)
+
+
+@pytest.mark.asyncio
+async def test_cb_extend_preset_expired_counts_from_now():
+    """Expired subscription: +days is counted from now, not the old date."""
+    from handlers.actions import cb_extend_preset
+    from keyboards import ExtendCB
+    from remnawave.models import RemnaUser
+
+    past = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    user = RemnaUser(
+        uuid="u-1", username="j", status="EXPIRED", used_traffic_bytes=0,
+        traffic_limit_bytes=0, expire_at=past, telegram_id=None, email=None,
+        description="", subscription_url=None, short_uuid=None, raw={},
+    )
+    client = FakeClient(user=user)
+    await cb_extend_preset(FakeCQ(), ExtendCB(days="30", uuid="u-1"), client)
+    expected = datetime.now(timezone.utc) + timedelta(days=30)
+    assert abs((client.update_expire_args[1] - expected).total_seconds()) < 60

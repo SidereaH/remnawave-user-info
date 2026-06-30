@@ -110,11 +110,23 @@ async def cb_extend_menu(cq: CallbackQuery, callback_data: UserCB):
     await cq.answer()
 
 
+def _extend_base(expire_at: datetime | None, now: datetime) -> datetime:
+    """База для продления: если подписка истекла или без срока — от now,
+    иначе прибавляем к текущей дате окончания."""
+    if expire_at is None:
+        return now
+    if expire_at.tzinfo is None:
+        expire_at = expire_at.replace(tzinfo=timezone.utc)
+    return expire_at if expire_at > now else now
+
+
 @router.callback_query(ExtendCB.filter(F.days != "custom"))
 async def cb_extend_preset(cq: CallbackQuery, callback_data: ExtendCB, client: RemnawaveClient):
     days = int(callback_data.days)
-    new_expire = datetime.now(timezone.utc) + timedelta(days=days)
     try:
+        user = await client.get_user(callback_data.uuid)
+        base = _extend_base(user.expire_at, datetime.now(timezone.utc))
+        new_expire = base + timedelta(days=days)
         await client.update_expire(callback_data.uuid, new_expire)
         await _show_card(cq, client, callback_data.uuid)
     except RemnawaveError as e:
