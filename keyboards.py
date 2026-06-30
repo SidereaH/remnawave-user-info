@@ -8,7 +8,7 @@ from remnawave.models import RemnaUser
 
 
 class UserCB(CallbackData, prefix="u"):
-    action: str  # enable|disable|extend_menu|reset_ask|revoke_ask|usage|refresh|open
+    action: str  # enable|disable|extend_menu|reset_ask|devices_ask|revoke_ask|usage|refresh|open
     uuid: str
 
 
@@ -36,10 +36,11 @@ def card_keyboard(u: RemnaUser) -> InlineKeyboardMarkup:
         b.button(text="🔴 Выключить", callback_data=UserCB(action="disable", uuid=u.uuid))
     b.button(text="➕ Продлить", callback_data=UserCB(action="extend_menu", uuid=u.uuid))
     b.button(text="🧹 Сброс трафика", callback_data=UserCB(action="reset_ask", uuid=u.uuid))
+    b.button(text="📵 Сброс устройств", callback_data=UserCB(action="devices_ask", uuid=u.uuid))
     b.button(text="🔁 Ревок подписки", callback_data=UserCB(action="revoke_ask", uuid=u.uuid))
     b.button(text="📊 Статистика трафика", callback_data=UserCB(action="usage", uuid=u.uuid))
     b.button(text="🔄 Обновить", callback_data=UserCB(action="refresh", uuid=u.uuid))
-    b.adjust(1, 1, 2, 1, 1)
+    b.adjust(1, 1, 3, 1, 1)
     return b.as_markup()
 
 

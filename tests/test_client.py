@@ -73,6 +73,23 @@ async def test_get_usage_by_range_reraises_non_404():
     await c.aclose()
 
 
+async def test_reset_devices_path_and_body():
+    captured = {}
+
+    def handler(req):
+        captured["method"] = req.method
+        captured["path"] = req.url.path
+        captured["body"] = json.loads(req.content)
+        return httpx.Response(200, json={"response": True})
+
+    c = _client(handler)
+    await c.reset_devices("u-9")
+    assert captured["method"] == "POST"
+    assert captured["path"] == "/api/hwid/devices/delete-all"
+    assert captured["body"] == {"userUuid": "u-9"}
+    await c.aclose()
+
+
 async def test_get_by_telegram_id_unwraps_array():
     def handler(req):
         assert req.url.path == "/api/users/by-telegram-id/555"

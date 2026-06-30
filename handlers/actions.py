@@ -160,6 +160,14 @@ async def cb_reset_ask(cq: CallbackQuery, callback_data: UserCB):
     await cq.answer("Подтвердите сброс трафика")
 
 
+@router.callback_query(UserCB.filter(F.action == "devices_ask"))
+async def cb_devices_ask(cq: CallbackQuery, callback_data: UserCB):
+    await cq.message.edit_reply_markup(
+        reply_markup=confirm_keyboard("devices", callback_data.uuid)
+    )
+    await cq.answer("Подтвердите сброс устройств")
+
+
 @router.callback_query(UserCB.filter(F.action == "revoke_ask"))
 async def cb_revoke_ask(cq: CallbackQuery, callback_data: UserCB):
     await cq.message.edit_reply_markup(
@@ -178,6 +186,9 @@ async def cb_confirm(cq: CallbackQuery, callback_data: ConfirmCB, client: Remnaw
         if callback_data.action == "reset":
             await client.reset_traffic(callback_data.uuid)
             done = "Трафик сброшен"
+        elif callback_data.action == "devices":
+            await client.reset_devices(callback_data.uuid)
+            done = "Устройства сброшены"
         elif callback_data.action == "revoke":
             await client.revoke_subscription(callback_data.uuid)
             done = "Подписка перевыпущена"

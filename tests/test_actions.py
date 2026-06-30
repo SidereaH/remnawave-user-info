@@ -175,3 +175,28 @@ async def test_on_custom_date_with_uuid_calls_update_expire():
     assert client.update_expire_called
     assert client.update_expire_args is not None
     assert client.update_expire_args[0] == "real-uuid"
+
+
+# ---------------------------------------------------------------------------
+# cb_confirm: device-reset branch
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_cb_confirm_devices_calls_reset_devices():
+    """ConfirmCB(action='devices', yes=1) must call client.reset_devices(uuid)."""
+    from handlers.actions import cb_confirm
+    from keyboards import ConfirmCB
+
+    class DevClient(FakeClient):
+        def __init__(self):
+            super().__init__()
+            self.reset_devices_called_with = None
+
+        async def reset_devices(self, uuid):
+            self.reset_devices_called_with = uuid
+            return {"response": True}
+
+    cq = FakeCQ()
+    client = DevClient()
+    await cb_confirm(cq, ConfirmCB(action="devices", uuid="u-7", yes=1), client)
+    assert client.reset_devices_called_with == "u-7"

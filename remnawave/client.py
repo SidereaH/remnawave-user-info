@@ -128,6 +128,12 @@ class RemnawaveClient:
     async def reset_traffic(self, uuid: str) -> RemnaUser | None:
         return await self._action(uuid, "reset-traffic")
 
+    async def reset_devices(self, uuid: str) -> Any:
+        # Сброс всех HWID-устройств пользователя (Remnawave 2.7.x).
+        return await self._request(
+            "POST", "/api/hwid/devices/delete-all", json={"userUuid": uuid}
+        )
+
     async def revoke_subscription(self, uuid: str) -> RemnaUser:
         users = self._as_users(
             await self._request("POST", f"/api/users/{uuid}/actions/revoke")

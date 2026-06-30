@@ -52,6 +52,17 @@ def test_card_keyboard_has_usage_action():
     assert any(c == "u:usage:u-1" for c in cbs)
 
 
+def test_card_keyboard_has_devices_action():
+    cbs = _all_cb(card_keyboard(_user()))
+    assert any(c == "u:devices_ask:u-1" for c in cbs)
+
+
+def test_confirm_keyboard_devices():
+    cbs = _all_cb(confirm_keyboard("devices", "u-1"))
+    assert "cf:devices:u-1:1" in cbs
+    assert "cf:devices:u-1:0" in cbs
+
+
 def test_usage_period_keyboard_has_three_periods_and_back():
     cbs = _all_cb(usage_period_keyboard("u-1"))
     assert "usg:7:u-1" in cbs
