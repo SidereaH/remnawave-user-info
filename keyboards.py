@@ -40,7 +40,8 @@ def card_keyboard(u: RemnaUser) -> InlineKeyboardMarkup:
     b.button(text="🔁 Ревок подписки", callback_data=UserCB(action="revoke_ask", uuid=u.uuid))
     b.button(text="📊 Статистика трафика", callback_data=UserCB(action="usage", uuid=u.uuid))
     b.button(text="🔄 Обновить", callback_data=UserCB(action="refresh", uuid=u.uuid))
-    b.adjust(1, 1, 3, 1, 1)
+    # По одной кнопке в ряд для длинных подписей, чтобы текст не обрезался.
+    b.adjust(1, 1, 1, 1, 1, 1, 1)
     return b.as_markup()
 
 
