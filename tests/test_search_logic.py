@@ -93,3 +93,30 @@ async def test_on_search_short_query_ok_for_telegram_id():
     msg = _FakeMessage("55")
     await on_search(msg, c)
     assert c.calls == [("tg", 55)]
+
+
+async def test_on_search_multi_shows_list_with_device_counts():
+    from handlers.search import on_search
+    from remnawave.models import RemnaUser
+
+    def mk(name):
+        return RemnaUser(
+            uuid=name, username=name, status="ACTIVE", used_traffic_bytes=0,
+            traffic_limit_bytes=0, expire_at=None, telegram_id=None, email=None,
+            description="", subscription_url=None, short_uuid=None, raw={},
+        )
+
+    class Multi(_FakeClient):
+        async def search_by_description(self, v):
+            self.calls.append(("desc", v))
+            return [mk("bot_a"), mk("bot_b")]
+
+        async def get_devices_count(self, uuid):
+            return 5 if uuid == "bot_a" else 1
+
+    c = Multi()
+    msg = _FakeMessage("someuser")
+    await on_search(msg, c)
+    assert msg.answers
+    assert "bot_a" in msg.answers[0] and "bot_b" in msg.answers[0]
+    assert "📵 5" in msg.answers[0]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from aiogram import F, Router
@@ -7,7 +8,7 @@ from aiogram.filters import CommandStart, StateFilter
 from aiogram.types import Message
 
 from detect import detect_query
-from formatting import render_card
+from formatting import render_card, render_user_list
 from keyboards import card_keyboard, choice_keyboard
 from remnawave.client import RemnawaveClient, RemnawaveError
 from remnawave.models import RemnaUser
@@ -68,8 +69,15 @@ async def on_search(message: Message, client: RemnawaveClient) -> None:
         await message.answer(render_card(u), reply_markup=card_keyboard(u))
         return
     shown = users[:20]
-    if len(users) > len(shown):
-        header = f"Найдено {len(users)}, показаны первые {len(shown)}:"
-    else:
-        header = f"Найдено {len(users)}. Выбери:"
-    await message.answer(header, reply_markup=choice_keyboard(shown))
+    counts = await asyncio.gather(
+        *(client.get_devices_count(u.uuid) for u in shown),
+        return_exceptions=True,
+    )
+    entries = [
+        (u, c if isinstance(c, int) else None)
+        for u, c in zip(shown, counts)
+    ]
+    await message.answer(
+        render_user_list(entries, len(users)),
+        reply_markup=choice_keyboard(shown),
+    )

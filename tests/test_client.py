@@ -244,3 +244,22 @@ async def test_revoke_subscription_no_body_when_disabled():
     await c.revoke_subscription("u1")
     assert captured["content"] == b""  # 2.7.x: no request body
     await c.aclose()
+
+
+async def test_get_devices_count_from_total():
+    def handler(req):
+        assert req.url.path == "/api/hwid/devices/u1"
+        return httpx.Response(200, json={"response": {"total": 3, "devices": [{}, {}]}})
+
+    c = _client(handler)
+    assert await c.get_devices_count("u1") == 3  # total wins over len(devices)
+    await c.aclose()
+
+
+async def test_get_devices_count_falls_back_to_len():
+    def handler(req):
+        return httpx.Response(200, json={"response": {"devices": [{}, {}, {}, {}]}})
+
+    c = _client(handler)
+    assert await c.get_devices_count("u1") == 4
+    await c.aclose()
