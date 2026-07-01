@@ -31,8 +31,8 @@ def test_defaults():
 
 
 def test_panel_version_default_needs_body():
-    assert _make().panel_version == "2.8.0"
-    assert _make().revoke_needs_body is True
+    assert _make().panel_version == "2.7.4"
+    assert _make().revoke_needs_body is False
 
 
 def test_revoke_needs_body_by_version():

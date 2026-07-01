@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     users_page_size: int = 250
     request_timeout: int = 20
     log_level: str = "INFO"
-    panel_version: str = "2.8.0"
+    panel_version: str = "2.7.4"
 
     @field_validator("remnawave_url")
     @classmethod
