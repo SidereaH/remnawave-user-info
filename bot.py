@@ -25,6 +25,7 @@ async def main() -> None:
         token=settings.remnawave_token,
         timeout=settings.request_timeout,
         page_size=settings.users_page_size,
+        revoke_body=settings.revoke_needs_body,
     )
 
     bot = Bot(
@@ -42,7 +43,8 @@ async def main() -> None:
     dp.include_router(search.router)
 
     logging.getLogger(__name__).info(
-        "Бот запущен. Админов: %d", len(settings.admin_ids)
+        "Бот запущен. Панель %s, админов: %d",
+        settings.panel_version, len(settings.admin_ids),
     )
     try:
         await dp.start_polling(bot)

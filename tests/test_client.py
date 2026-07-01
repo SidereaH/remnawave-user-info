@@ -199,3 +199,19 @@ async def test_update_expire_normalizes_non_utc_to_utc():
     await c.update_expire("u1", datetime(2026, 12, 31, 12, 0, 0, tzinfo=timezone(timedelta(hours=3))))
     assert captured["body"]["expireAt"] == "2026-12-31T09:00:00.000Z"
     await c.aclose()
+
+
+async def test_revoke_subscription_no_body_when_disabled():
+    captured = {}
+
+    def handler(req):
+        captured["content"] = req.content
+        return httpx.Response(200, json={"response": {"uuid": "u1", "username": "x"}})
+
+    transport = httpx.MockTransport(handler)
+    c = RemnawaveClient(
+        "https://panel.example.com", "tok", transport=transport, revoke_body=False
+    )
+    await c.revoke_subscription("u1")
+    assert captured["content"] == b""  # 2.7.x: no request body
+    await c.aclose()

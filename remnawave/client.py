@@ -27,8 +27,10 @@ class RemnawaveClient:
         timeout: int = 20,
         page_size: int = 250,
         transport: httpx.BaseTransport | None = None,
+        revoke_body: bool = True,
     ) -> None:
         self._page_size = page_size
+        self._revoke_body = revoke_body
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"Authorization": f"Bearer {token}"},
@@ -135,13 +137,12 @@ class RemnawaveClient:
         )
 
     async def revoke_subscription(self, uuid: str) -> RemnaUser:
-        # Remnawave 2.8.0: revoke требует тело. revokeOnlyPasswords=false —
-        # полный перевыпуск подписки (новый shortUuid/subscriptionUrl).
+        # Remnawave 2.8.0 требует тело (revokeOnlyPasswords=false — полный
+        # перевыпуск подписки); 2.7.x тела не ждёт (revoke_body=False → без тела).
+        body = {"revokeOnlyPasswords": False} if self._revoke_body else None
         users = self._as_users(
             await self._request(
-                "POST",
-                f"/api/users/{uuid}/actions/revoke",
-                json={"revokeOnlyPasswords": False},
+                "POST", f"/api/users/{uuid}/actions/revoke", json=body
             )
         )
         return users[0] if users else await self.get_user(uuid)

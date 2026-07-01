@@ -28,3 +28,16 @@ def test_defaults():
     s = _make()
     assert s.users_page_size == 250
     assert s.request_timeout == 20
+
+
+def test_panel_version_default_needs_body():
+    assert _make().panel_version == "2.8.0"
+    assert _make().revoke_needs_body is True
+
+
+def test_revoke_needs_body_by_version():
+    assert _make(panel_version="2.8.0").revoke_needs_body is True
+    assert _make(panel_version="2.8").revoke_needs_body is True
+    assert _make(panel_version="2.9.1").revoke_needs_body is True
+    assert _make(panel_version="2.7.4").revoke_needs_body is False
+    assert _make(panel_version="2.7").revoke_needs_body is False
