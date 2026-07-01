@@ -270,3 +270,55 @@ async def test_cb_extend_preset_expired_counts_from_now():
     await cb_extend_preset(FakeCQ(), ExtendCB(days="30", uuid="u-1"), client)
     expected = datetime.now(timezone.utc) + timedelta(days=30)
     assert abs((client.update_expire_args[1] - expected).total_seconds()) < 60
+
+
+# ---------------------------------------------------------------------------
+# cb_usage_period: ack immediately (no eternal spinner), deliver via message
+# ---------------------------------------------------------------------------
+
+class _MsgSink:
+    def __init__(self):
+        self.msgs = []
+
+    async def answer(self, text, **kw):
+        self.msgs.append(text)
+
+
+class _UsageCQ:
+    def __init__(self):
+        self.message = _MsgSink()
+        self.events = []
+
+    async def answer(self, *a, **kw):
+        self.events.append(a[0] if a else None)
+
+
+@pytest.mark.asyncio
+async def test_cb_usage_period_acks_then_sends_result():
+    from handlers.actions import cb_usage_period
+    from keyboards import UsageCB
+
+    class Client:
+        async def get_usage_by_range(self, uuid, start, end):
+            return [{"nodeName": "A", "total": 10}]
+
+    cq = _UsageCQ()
+    await cb_usage_period(cq, UsageCB(period="7", uuid="u1"), Client())
+    assert cq.events  # callback was answered (spinner cleared)
+    assert cq.message.msgs  # result delivered as a message
+
+
+@pytest.mark.asyncio
+async def test_cb_usage_period_error_as_message_with_reason():
+    from handlers.actions import cb_usage_period
+    from keyboards import UsageCB
+    from remnawave.client import RemnawaveError
+
+    class Client:
+        async def get_usage_by_range(self, uuid, start, end):
+            raise RemnawaveError("Панель ответила 400: bad start", status=400)
+
+    cq = _UsageCQ()
+    await cb_usage_period(cq, UsageCB(period="7", uuid="u1"), Client())
+    assert cq.events  # answered despite the error (no eternal spinner)
+    assert any("400" in m for m in cq.message.msgs)
