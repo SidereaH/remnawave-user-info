@@ -19,6 +19,21 @@ class RemnawaveError(Exception):
         self.status = status
 
 
+def _error_detail(resp: httpx.Response) -> str:
+    """Вытаскивает человекочитаемое описание ошибки из тела ответа панели."""
+    try:
+        body = resp.json()
+    except (ValueError, TypeError):
+        return resp.text.strip()[:150]
+    if isinstance(body, dict):
+        msg = body.get("message") or body.get("error") or body.get("errorCode")
+        if isinstance(msg, (list, tuple)):
+            return "; ".join(str(x) for x in msg)
+        if msg:
+            return str(msg)
+    return ""
+
+
 class RemnawaveClient:
     def __init__(
         self,
@@ -46,14 +61,16 @@ class RemnawaveClient:
             resp = await self._client.request(method, path, **kwargs)
             resp.raise_for_status()
         except httpx.HTTPStatusError as e:
+            code = e.response.status_code
             logger.warning(
                 "Remnawave %s %s -> %s: %s",
-                method, path, e.response.status_code, e.response.text[:300],
+                method, path, code, e.response.text[:300],
             )
-            raise RemnawaveError(
-                f"Панель ответила {e.response.status_code}",
-                status=e.response.status_code,
-            ) from e
+            detail = _error_detail(e.response)
+            msg = f"Панель ответила {code}"
+            if detail:
+                msg += f": {detail[:150]}"
+            raise RemnawaveError(msg, status=code) from e
         except httpx.HTTPError as e:
             logger.warning("Remnawave %s %s failed: %s", method, path, e)
             raise RemnawaveError("Нет связи с панелью") from e
