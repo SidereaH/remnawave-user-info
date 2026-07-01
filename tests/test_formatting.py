@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from formatting import human_bytes, render_card, render_usage
+from formatting import human_bytes, render_card, render_usage, render_user_list
 from remnawave.models import RemnaUser
 
 
@@ -102,3 +102,14 @@ def test_render_usage_none_or_empty_returns_no_data():
     assert render_usage(None) == "Нет данных по трафику."
     assert render_usage([]) == "Нет данных по трафику."
     assert render_usage({}) == "Нет данных по трафику."
+
+
+def test_render_user_list_shows_username_traffic_devices():
+    u1 = _user(username="bot_1", used_traffic_bytes=1024 ** 2, traffic_limit_bytes=1024 ** 3)
+    u2 = _user(username="bot_2", used_traffic_bytes=0, traffic_limit_bytes=0)
+    txt = render_user_list([(u1, 2), (u2, None)], total=2)
+    assert "bot_1" in txt and "bot_2" in txt
+    assert "1.00 MB / 1.00 GB" in txt
+    assert "📵 2" in txt
+    assert "📵 ?" in txt          # None -> ?
+    assert "Найдено 2" in txt

@@ -37,6 +37,27 @@ def _fmt_expire(dt: datetime | None) -> str:
     return dt.strftime("%d.%m.%y %H:%M") if dt else "∞"
 
 
+def render_user_list(
+    entries: list[tuple[RemnaUser, int | None]], total: int
+) -> str:
+    """Список найденных подписок: username из Remnawave, трафик, число устройств.
+    device_count = None → показываем '?' (не удалось получить)."""
+    if total > len(entries):
+        header = f"Найдено {total}, показаны первые {len(entries)}:"
+    else:
+        header = f"Найдено {total} — выбери:"
+    lines = [header, ""]
+    for i, (u, cnt) in enumerate(entries, 1):
+        em = _STATUS_EMOJI.get(u.status, "▫️")
+        dev = "?" if cnt is None else str(cnt)
+        lines.append(f"{i}. {em} <b>{escape(u.username or u.uuid)}</b>")
+        lines.append(
+            f"   📶 {_fmt_traffic(u.used_traffic_bytes, u.traffic_limit_bytes)}"
+            f"  ·  📵 {dev}"
+        )
+    return "\n".join(lines)
+
+
 def render_card(u: RemnaUser) -> str:
     em = _STATUS_EMOJI.get(u.status, "▫️")
     lines = [

@@ -136,6 +136,21 @@ class RemnawaveClient:
             "POST", "/api/hwid/devices/delete-all", json={"userUuid": uuid}
         )
 
+    async def get_devices_count(self, uuid: str) -> int:
+        # Число HWID-устройств пользователя: {response:{total, devices:[...]}}.
+        resp = await self._request("GET", f"/api/hwid/devices/{uuid}")
+        if isinstance(resp, dict):
+            total = resp.get("total")
+            if total is not None:
+                try:
+                    return int(total)
+                except (TypeError, ValueError):
+                    pass
+            devices = resp.get("devices")
+            if isinstance(devices, list):
+                return len(devices)
+        return 0
+
     async def revoke_subscription(self, uuid: str) -> RemnaUser:
         # Remnawave 2.8.0 требует тело (revokeOnlyPasswords=false — полный
         # перевыпуск подписки); 2.7.x тела не ждёт (revoke_body=False → без тела).

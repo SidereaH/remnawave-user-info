@@ -76,10 +76,8 @@ def confirm_keyboard(action: str, uuid: str) -> InlineKeyboardMarkup:
 
 def choice_keyboard(users: list[RemnaUser]) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
-    for u in users:
-        label = u.username or u.uuid
-        if u.email:
-            label = f"{label} · {u.email}"
+    for i, u in enumerate(users, 1):
+        label = f"{i}. {u.username or u.uuid}"
         b.button(text=label[:60], callback_data=UserCB(action="open", uuid=u.uuid))
     b.adjust(1)
     return b.as_markup()
