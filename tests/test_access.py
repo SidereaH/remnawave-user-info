@@ -42,4 +42,5 @@ async def test_blocked_user_does_not_call_handler():
     ev = _Event(999)
     await mw(handler, ev, {})
     assert "ok" not in called
-    assert ev.answered is not None
+    # Чужим не отвечаем — тишина.
+    assert ev.answered is None
