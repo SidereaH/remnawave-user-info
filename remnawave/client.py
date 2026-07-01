@@ -46,6 +46,7 @@ class RemnawaveClient:
     ) -> None:
         self._page_size = page_size
         self._revoke_body = revoke_body
+        self._timeout = timeout
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"Authorization": f"Bearer {token}"},
@@ -71,6 +72,9 @@ class RemnawaveClient:
             if detail:
                 msg += f": {detail[:150]}"
             raise RemnawaveError(msg, status=code) from e
+        except httpx.TimeoutException as e:
+            logger.warning("Remnawave %s %s timeout: %s", method, path, e)
+            raise RemnawaveError("Панель не ответила вовремя (таймаут)") from e
         except httpx.HTTPError as e:
             logger.warning("Remnawave %s %s failed: %s", method, path, e)
             raise RemnawaveError("Нет связи с панелью") from e
@@ -198,6 +202,9 @@ class RemnawaveClient:
         """
         su = start.astimezone(timezone.utc)
         eu = end.astimezone(timezone.utc)
+        # Отдельный короткий таймаут: если stats-бэкенд панели тормозит,
+        # падаем быстро, а не держим кнопку по 20с.
+        stats_timeout = min(self._timeout, 12)
         try:
             return await self._request(
                 "GET",
@@ -207,6 +214,7 @@ class RemnawaveClient:
                     "end": eu.strftime("%Y-%m-%d"),
                     "topNodesLimit": 10,
                 },
+                timeout=stats_timeout,
             )
         except RemnawaveError as e:
             if e.status not in (400, 404):
@@ -218,4 +226,5 @@ class RemnawaveClient:
                     "start": su.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
                     "end": eu.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
                 },
+                timeout=stats_timeout,
             )

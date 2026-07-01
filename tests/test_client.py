@@ -273,3 +273,13 @@ async def test_http_error_surfaces_panel_message():
     with pytest.raises(RemnawaveError, match="start must be a valid date"):
         await c.get_user("u1")
     await c.aclose()
+
+
+async def test_timeout_raises_specific_message():
+    def handler(req):
+        raise httpx.ReadTimeout("slow", request=req)
+
+    c = _client(handler)
+    with pytest.raises(RemnawaveError, match="таймаут"):
+        await c.get_user("u1")
+    await c.aclose()
