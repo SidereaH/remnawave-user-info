@@ -263,3 +263,13 @@ async def test_get_devices_count_falls_back_to_len():
     c = _client(handler)
     assert await c.get_devices_count("u1") == 4
     await c.aclose()
+
+
+async def test_http_error_surfaces_panel_message():
+    def handler(req):
+        return httpx.Response(400, json={"message": "start must be a valid date"})
+
+    c = _client(handler)
+    with pytest.raises(RemnawaveError, match="start must be a valid date"):
+        await c.get_user("u1")
+    await c.aclose()
