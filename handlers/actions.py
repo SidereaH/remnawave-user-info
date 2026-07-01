@@ -89,17 +89,18 @@ async def cb_usage(cq: CallbackQuery, callback_data: UserCB):
 
 @router.callback_query(UsageCB.filter())
 async def cb_usage_period(cq: CallbackQuery, callback_data: UsageCB, client: RemnawaveClient):
+    # Сразу гасим спиннер кнопки — запрос статистики может быть долгим.
+    await cq.answer("Загружаю…")
     days = int(callback_data.period)
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
     try:
         data = await client.get_usage_by_range(callback_data.uuid, start, end)
     except RemnawaveError as e:
-        await cq.answer(str(e), show_alert=True)
+        await cq.message.answer(f"⚠️ {e}")
         return
     label = _PERIOD_LABELS.get(callback_data.period, f"{days} дней")
     await cq.message.answer(render_usage(data, label))
-    await cq.answer()
 
 
 @router.callback_query(UserCB.filter(F.action == "extend_menu"))
