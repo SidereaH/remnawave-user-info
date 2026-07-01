@@ -15,6 +15,10 @@ from remnawave.models import RemnaUser
 logger = logging.getLogger(__name__)
 router = Router(name="search")
 
+# Минимальная длина запроса для поиска по подстроке в описании (username).
+# Иначе одна буква сканирует всех пользователей и матчит слишком много.
+MIN_USERNAME_QUERY = 3
+
 _HELP = (
     "🔎 Пришли для поиска:\n"
     "• <b>Telegram ID</b> — например <code>123456789</code>\n"
@@ -45,6 +49,12 @@ async def on_search(message: Message, client: RemnawaveClient) -> None:
         await message.answer(_HELP)
         return
     kind, value = detect_query(text)
+    if kind == "username" and len(value) < MIN_USERNAME_QUERY:
+        await message.answer(
+            f"🔎 Слишком короткий запрос — для поиска по @username/описанию "
+            f"нужно минимум {MIN_USERNAME_QUERY} символа."
+        )
+        return
     try:
         users = await lookup(client, kind, value)
     except RemnawaveError as e:

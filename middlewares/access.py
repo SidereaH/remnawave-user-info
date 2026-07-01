@@ -22,9 +22,7 @@ class AccessMiddleware(BaseMiddleware):
         user = getattr(event, "from_user", None)
         uid = getattr(user, "id", None)
         if uid not in self._allowed:
+            # Молча игнорируем чужих — никакого ответа, только лог.
             logger.warning("Доступ запрещён: telegram_id=%s", uid)
-            answer = getattr(event, "answer", None)
-            if answer is not None:
-                await answer("⛔️ Нет доступа.")
             return None
         return await handler(event, data)

@@ -160,23 +160,30 @@ class RemnawaveClient:
     ) -> Any:
         """Потребление трафика пользователя за период [start, end].
 
-        Remnawave 2.8.0: основной — `/api/bandwidth-stats/users/{uuid}`
-        (обязательны start, end, topNodesLimit), запасной (если 404) —
-        `/api/bandwidth-stats/users/{uuid}/legacy` (только start, end).
+        Основной `/api/bandwidth-stats/users/{uuid}` ждёт start/end в формате
+        ДАТЫ (`YYYY-MM-DD`) + topNodesLimit; при 404/400 пробуем `/legacy`,
+        где start/end — полный ISO date-time.
         """
-        params = {
-            "start": start.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-            "end": end.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-        }
+        su = start.astimezone(timezone.utc)
+        eu = end.astimezone(timezone.utc)
         try:
             return await self._request(
                 "GET",
                 f"/api/bandwidth-stats/users/{uuid}",
-                params={**params, "topNodesLimit": 10},
+                params={
+                    "start": su.strftime("%Y-%m-%d"),
+                    "end": eu.strftime("%Y-%m-%d"),
+                    "topNodesLimit": 10,
+                },
             )
         except RemnawaveError as e:
-            if e.status != 404:
+            if e.status not in (400, 404):
                 raise
             return await self._request(
-                "GET", f"/api/bandwidth-stats/users/{uuid}/legacy", params=params
+                "GET",
+                f"/api/bandwidth-stats/users/{uuid}/legacy",
+                params={
+                    "start": su.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                    "end": eu.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                },
             )

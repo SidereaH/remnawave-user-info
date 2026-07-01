@@ -32,22 +32,25 @@ async def test_get_usage_by_range_primary_plural_path_and_params():
     end = datetime(2026, 6, 8, tzinfo=timezone.utc)
     data = await c.get_usage_by_range("u1", start, end)
     assert captured["path"] == "/api/bandwidth-stats/users/u1"  # plural primary
-    assert captured["start"] == "2026-06-01T00:00:00.000Z"
-    assert captured["end"] == "2026-06-08T00:00:00.000Z"
+    assert captured["start"] == "2026-06-01"  # format: date (not date-time)
+    assert captured["end"] == "2026-06-08"
     assert captured["topNodesLimit"] == "10"
     assert data == [{"nodeName": "A", "total": 10}]
     await c.aclose()
 
 
-async def test_get_usage_by_range_falls_back_to_singular_on_404():
+async def test_get_usage_by_range_falls_back_to_legacy_on_404():
     from datetime import datetime, timezone
 
     seen = []
+    legacy = {}
 
     def handler(req):
         seen.append(req.url.path)
         if req.url.path == "/api/bandwidth-stats/users/u1":
             return httpx.Response(404, json={"message": "not found"})
+        legacy["start"] = req.url.params.get("start")
+        legacy["end"] = req.url.params.get("end")
         return httpx.Response(200, json={"response": {"totalBytes": 99}})
 
     c = _client(handler)
@@ -58,7 +61,33 @@ async def test_get_usage_by_range_falls_back_to_singular_on_404():
         "/api/bandwidth-stats/users/u1",
         "/api/bandwidth-stats/users/u1/legacy",
     ]
+    # legacy uses date-time format
+    assert legacy["start"] == "2026-06-01T00:00:00.000Z"
+    assert legacy["end"] == "2026-06-08T00:00:00.000Z"
     assert data == {"totalBytes": 99}
+    await c.aclose()
+
+
+async def test_get_usage_by_range_falls_back_to_legacy_on_400():
+    from datetime import datetime, timezone
+
+    seen = []
+
+    def handler(req):
+        seen.append(req.url.path)
+        if req.url.path == "/api/bandwidth-stats/users/u1":
+            return httpx.Response(400, json={"message": "bad start format"})
+        return httpx.Response(200, json={"response": {"totalBytes": 7}})
+
+    c = _client(handler)
+    start = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    end = datetime(2026, 6, 8, tzinfo=timezone.utc)
+    data = await c.get_usage_by_range("u1", start, end)
+    assert seen == [
+        "/api/bandwidth-stats/users/u1",
+        "/api/bandwidth-stats/users/u1/legacy",
+    ]
+    assert data == {"totalBytes": 7}
     await c.aclose()
 
 
